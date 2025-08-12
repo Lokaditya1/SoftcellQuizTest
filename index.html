@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Softcell — Windchill MCQ Quiz</title>
+<style>
+  :root{--accent:#0b5db1;--answered:#2ea44f;--unanswered:#cccccc;}
+  body{font-family:Arial,Helvetica,sans-serif;margin:0;display:flex;min-height:100vh;}
+  header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid #eee;background:#fff;position:sticky;top:0;z-index:5;width:100%;}
+  #logo{height:56px}
+  .student-info{display:flex;gap:8px;align-items:center}
+  .student-info input, .student-info select{padding:6px 8px;border:1px solid #ccc;border-radius:4px}
+  .btn{background:var(--accent);color:#fff;padding:8px 12px;border-radius:6px;border:none;cursor:pointer}
+  .container{display:flex;flex:1;overflow:hidden}
+  #leftNav{width:160px;border-right:1px solid #eee;padding:12px;overflow:auto;background:#fafafa}
+  .qbtn{display:inline-block;width:36px;height:36px;margin:6px;border-radius:6px;line-height:36px;text-align:center;cursor:pointer;border:1px solid #bbb;background:var(--unanswered);color:#222;user-select:none}
+  .qbtn.answered{background:var(--answered);color:#fff;cursor:not-allowed;opacity:0.95}
+  .qbtn.current{box-shadow:0 0 0 3px rgba(11,93,177,0.12)}
+  #main{flex:1;padding:18px;overflow:auto}
+  .question-card{border-radius:8px;padding:18px;border:1px solid #eee;background:#fff;max-width:900px}
+  .options{margin-top:12px;display:grid;grid-template-columns:1fr;gap:8px}
+  .opt{padding:12px;border-radius:6px;border:1px solid #ddd;cursor:pointer}
+  .opt.locked{cursor:not-allowed;opacity:0.8}
+  .opt.correct{border-color:var(--answered);background:#eaf6EC}
+  .opt.wrong{border-color:#d9534f;background:#fdecea}
+  .footer{margin-top:14px;display:flex;justify-content:space-between;align-items:center}
+  .score-box{font-weight:600}
+  /* responsive */
+  @media(max-width:900px){#leftNav{display:none}header{padding:8px} .student-info input{width:120px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:12px">
+    <!-- Replace the src value below with either "logo.png" (and upload the file) OR
+         a data URL like data:image/png;base64,<BASE64_STRING> by replacing LOGO_DATA_URI -->
+    <img id="logo" src="data:image/png;base64,LOGO_DATA_URI" alt="logo" />
+    <div style="font-weight:700;font-size:18px">Softcell — Windchill MCQ Quiz</div>
+  </div>
+
+  <div class="student-info" id="studentInputs">
+    <input id="stuName" placeholder="Name" />
+    <input id="stuReg" placeholder="Reg. Number" />
+    <input id="stuDept" placeholder="Department" />
+    <button id="startBtn" class="btn">Start Quiz</button>
+  </div>
+</header>
+
+<div class="container">
+  <aside id="leftNav" aria-label="Question navigation"></aside>
+
+  <main id="main">
+    <div class="question-card" id="qcard">
+      <div id="qNumber" style="font-weight:700;margin-bottom:8px">Press Start to begin</div>
+      <div id="qText" style="font-size:18px;color:#333">Fill your details at top right and click <strong>Start Quiz</strong></div>
+
+      <div class="options" id="options"></div>
+
+      <div class="footer">
+        <div id="statusText" style="color:#666"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="score-box" id="liveScore" style="display:none"></div>
+          <button id="saveBtn" class="btn" style="display:none">Save to Google Sheets</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ---------- Your Google Apps Script Web App URL (already set) ---------- */
+const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwKK_RL4TYKk_t43ky-jPcQLygLZQr4kDmSTXWUGBVt9YsffEt-WL3qG3jyHu6CwKko4g/exec';
+/* --------------------------------------------------------------------- */
+
+/* ---------- All 60 questions (array) ---------- */
+const questions = [
+  {q:"Which Windchill module is best suited for the collaborative management of product documents across distributed teams?", opts:["Windchill SIM","Windchill ProjectLink","Windchill PDMLink","Windchill AdminLink"], answer:2},
+  {q:"You are tasked with managing the engineering change process for a product assembly with multiple subcomponents. Which Windchill feature should you leverage?", opts:["Library Management","Change Management Workflow","Type Administration","CAD Document Search"], answer:1},
+  {q:"In the Windchill architecture, the application server is responsible for:", opts:["Running the user interface only","Storing product data directly","Processing business logic and interfacing with the database","Version control of CAD files"], answer:2},
+  {q:"What role does the Windchill Database play in the product lifecycle management process?", opts:["Hosts CAD application installation files","Stores structured metadata and relationships between PLM objects","Renders 3D models for end-users","Provides email notification services"], answer:1},
+  {q:"In your organization, you want to enforce strict access rights so that only certified users can approve engineering documents. Which Windchill feature enables this?", opts:["Promotion Request","Access Control Policies","BOM Management","Type and Attribute Management"], answer:1},
+  {q:"During a CAD integration session, a user attempts to check in a CREO part but receives a conflict error. The most likely cause is:", opts:["The part is referenced by a restricted library","The part is already checked out by another user","The CREO license is expired","The network bandwidth is too low"], answer:1},
+  {q:"Which best describes the Windchill concept of a Life Cycle Template?", opts:["A method of automating Java scripts on object types","A configuration that defines allowed states and transitions for objects","An attribute used for BOM generation","A template for HTML documentation"], answer:1},
+  {q:"In CREO, the process of preparing a part for Windchill upload typically involves:", opts:["Sketching only 2D profiles","Ensuring correct feature order and naming conventions","Compressing the part file into a ZIP archive","Exporting as PDF"], answer:1},
+  {q:"To create a BOM in Windchill, you must first:", opts:["Approve all related Change Requests","Create or associate Parts and their hierarchical structure","Run a database script","Assign all users to a license profile"], answer:1},
+  {q:"Which best practice should be followed when creating a new document in Windchill using the browser interface?", opts:["Upload only PDF files","Enter required metadata and select the correct context (library/product)","Avoid setting document access rights","Use default life cycle states for all documents"], answer:1},
+  {q:"What is the advantage of using a Promotion Request for a CAD document in Windchill?", opts:["Allows bulk deletion of documents","Enforces a formal review process before moving items to a released state","Accelerates CAD software rendering speed","Assigns custom attributes to the document"], answer:1},
+  {q:"Upon finding a CAD Document in Windchill, you notice its state is “In Work”. Which action is most appropriate before you start making modifications?", opts:["Download without checking status","Check out the document to lock it for editing","Delete the document","Change its life cycle to “Released”"], answer:1},
+  {q:"During a change management session, a participant is unable to submit a Change Notice. Which step likely was missed?", opts:["The change notice was already approved","The participant failed to link an affected object or part","The database was restarted","The document was in a product context"], answer:1},
+  {q:"In Workflow Administration, what is the primary function of 'Transitions'?", opts:["Define database backup processes","Specify permissible state changes and assign tasks in a process","Assign styles to CAD files","Restrict access to certain document versions"], answer:1},
+  {q:"If you need a new type of document in Windchill with special attributes (e.g., “Compliance Certificate”), where do you configure this?", opts:["CREO Settings","Type and Attribute Management Console","Participant Administration","HTML/XML editor"], answer:1},
+  {q:"Assigning a user to a license profile allows:", opts:["Access to premium reporting features","That user to utilize Windchill modules according to assigned entitlements","Automatic Java installation","Custom object type creation"], answer:1},
+  {q:"When configuring object initialization rules (OIRs), your primary goal is to:", opts:["Schedule backup routines","Predefine default values and behaviors for new objects of a specific type","Restrict password changes","Integrate with external ERP system"], answer:1},
+  {q:"Which is true of Windchill’s integration with CREO?", opts:["Only allows import of 2D drawings","Manages data consistency, check-in/check-out, and versioning for CAD objects","Prevents real-time collaboration","Requires manual synchronizing of BOMs"], answer:1},
+  {q:"The Participant Administration area is accessed primarily by:", opts:["All end-users","Product managers only","Users with administrative privileges","Manufacturing personnel only"], answer:2},
+  {q:"If a user forgets the password for the wcadmin account, which is the recommended best practice?", opts:["Reset through System Authentication Settings","Directly modify the database tables","Reinstall Windchill","Delete and recreate the account"], answer:0},
+  {q:"Stopping the Windchill application server is necessary for:", opts:["Applying configuration changes or patches","Generating workflow reports","Running Java scripts","Logging out all users"], answer:0},
+  {q:"Which search criteria is NOT valid for finding a document in Windchill?", opts:["Document Number","Associated Product","Microsoft Office version","Document Name"], answer:2},
+  {q:"What is a “Library” in Windchill intended for?", opts:["Temporary file storage","Secured context for storing standard/reference documents and reusable content","Network management","CAD assembly generation"], answer:1},
+  {q:"Part and Document Change Management in Windchill ensures:", opts:["Uncontrolled revisions are created","Data integrity, change traceability, and regulatory compliance","Real-time voice conferencing","Database fragmentation"], answer:1},
+  {q:"Lifecycle state transitions such as “In Work” -> “Under Review” -> “Released” are primarily managed by:", opts:["Change Notices only","Workflow processes tied to the object life cycle","CAD tools outside Windchill","Java batch jobs"], answer:1},
+  {q:"What is a common method to integrate Windchill with enterprise systems?", opts:["REST/SOAP Web Services interface","Copy-pasting CAD files","Using HTML tables","Email-based scripting"], answer:0},
+  {q:"When administering workflow templates, what aspect is most critical?", opts:["Limiting number of users per workflow","Accurate mapping of roles and transitions to business policies","Setting background colors","Network latency checks"], answer:1},
+  {q:"Creating a new Product in Windchill establishes:", opts:["A folder in the OS","A secured context for organizing all product related objects and workflows","A backup of current database","An email group"], answer:1},
+  {q:"In Windchill, what does “Revision” represent?", opts:["User who created the object","Iterative version of an object, indicating formal engineering change","The CAD system's hardware ID","Licensing information"], answer:1},
+  {q:"Which aspect of Java is most relevant for Windchill customization?", opts:["Swing User Interfaces","Writing workflow automation scripts and service extensions","Developing 2D drawings","Setting up network proxies"], answer:1},
+  {q:"Which scenario best requires type and attribute management?", opts:["Assigning passwords to users","Creating a custom object type for “Supplier Document” with fields for “Expiration Date”","Importing CSV files","Installing Windchill View"], answer:1},
+  {q:"When installing CREO View for Windchill visualization, what must an administrator confirm?", opts:["Only administrators can install it","System meets minimum hardware and software prerequisites","All users are logged out","All libraries are deleted"], answer:1},
+  {q:"You are searching for a Promotion Request but only know the product it belongs to. The most efficient way is:", opts:["Browse to the product context and use filtered search for Promotion Requests","Search by Workflow name","Review all document metadata manually","Send email to all users"], answer:0},
+  {q:"Before deleting a user in Windchill, you must ensure:", opts:["All change notices and tasks assigned to them are reassigned or closed","The user is in “In Work” state","Their password is reset","All workflows have been deleted"], answer:0},
+  {q:"HTML and XML in Windchill are used for:", opts:["Data structuring, template customization, and web interface rendering","File compression","User authentication","CAD file editing"], answer:0},
+  {q:"Which of the following tasks is NOT typically performed in a practical session on Administration?", opts:["Creating new libraries/products","Stopping and starting Windchill services","Managing access control policies","Developing CREO assemblies"], answer:3},
+  {q:"If an Engineering Change Notice (ECN) is submitted but not progressing, what is a likely administrative action?", opts:["Advise user to resubmit","Check workflow state, roles assigned, and ensure all tasks have owners","Restart the CAD software","Delete the affected document"], answer:1},
+  {q:"Assigning custom preferences at the organization level allows:", opts:["Only one user to set attributes","Consistency in default values and UI behaviors across multiple users or teams","Greater document size limits","Automatic library creation"], answer:1},
+  {q:"Which step comes first in Windchill’s CAD data management process?", opts:["Document Promotion","Model Check-in into the PLM system from the CAD application","Change Notice creation","Life Cycle Template application"], answer:1},
+  {q:"Why is proper Change Management crucial in regulated industries (like aerospace, pharma) when using Windchill?", opts:["It reduces software license costs","It ensures audit trails and regulatory compliance for each product change","It automates all design work","It prevents the creation of new document types"], answer:1},
+  {q:"What is the purpose of assigning a user to an Administrator profile in Windchill?", opts:["To allow report generation only","To provide full access to all objects, configuration, and system administration tools","To restrict workflow access","To bypass login"], answer:1},
+  {q:"The advantage of using practical sessions on CAD integration is:", opts:["Improves CAD software speed","Reinforces user understanding of check in/out, conflict resolution, and versioning processes","Minimizes disk usage","Increases database size"], answer:1},
+  {q:"When creating a new Part in Windchill, which metadata is most critical?", opts:["Part Number and Name","Local time zone","Email address","Default workflow"], answer:0},
+  {q:"In type and attribute management, attributes are best described as:", opts:["Unique server names","Custom properties define characteristics of objects (e.g., material, supplier)","Backup intervals","Default password length"], answer:1},
+  {q:"The system administrator receives a request to change access permissions to a library after a company reorganization. The correct action is:", opts:["Deny all user access","Update Access Control Policies to reflect new user-groups and permissions","Reset organization password","Export all documents to Excel"], answer:1},
+  {q:"Object Initialization Rules ensure that when a new “Design Document” is created, it:", opts:["Is assigned random metadata","Follows preset naming, numbering, and life cycle template","Belongs to all products automatically","Lacks a life cycle"], answer:1},
+  {q:"What is "Check-in" in Windchill’s context?", opts:["A manual log of server restarts","Uploading an updated CAD object from local workspace to central repository with new versioning","Verifying new part compliance","Modifying access policies"], answer:1},
+  {q:"When beginning a practical session on HTML/XML within Windchill, the primary focus will most likely be on:", opts:["Styling CAD drawings","Customizing item views, tables, and search results in user interface","License management","Part numbering system"], answer:1},
+  {q:"Which scenario best fits using 'Create a New Library' in Windchill?", opts:["Storing reusable technical standards and process documentation","Generating payroll slips","Email backup","User password reset"], answer:0},
+  {q:"An access control policy denying 'Delete' permission to all but administrators on released documents ensures:", opts:["Users can delete released documents","Only authorized personnel can remove critical data, preserving audit trails","Change management is disabled","All change notices are deleted"], answer:1},
+  {q:"BOM creation in Windchill often involves which of the following steps?", opts:["Assigning parts to documents without structure","Structuring assemblies and associating child parts with a Parent part","Exporting all parts to CSV","Adding users to the library"], answer:1},
+  {q:"How can a user quickly locate a missing CAD document they last checked in a week ago?", opts:["Use the global search with filters for document type, date, and context","Email all team members","Export the library as a PDF","Search by network folder"], answer:0},
+  {q:"In the context of Participant Administration, which statement is true?", opts:["All users can view all product data","Group membership and participant roles determine object visibility and permissions","Only administrators have system access","Lifecycle state does not affect permissions"], answer:1},
+  {q:"The purpose of a practice session on Change Management is usually to:", opts:["Restore backup files","Understand creation, review, and implementation of Change Requests/Notices within business scenarios","Increase file sizes","Practice drawing in CREO"], answer:1},
+  {q:"Which scenario requires the use of Java customizations in Windchill?", opts:["Integrating with a legacy ERP that doesn’t support out-of-the-box interfaces","Drawing 3D sketches","Running HTML reports","Creating user passwords"], answer:0},
+  {q:"In Windchill, creating a Promotion Request will:", opts:["Automatically release all child parts without review","Initiate a workflow process to move objects (e.g., CAD docs) through their defined lifecycle (like “In Work” to “Released”)","Reset user passwords","Update all access control policies"], answer:1},
+  {q:"The value of detailed attribute management (e.g., 'Material' or 'Supplier Code') is to:", opts:["Lower disk usage","Enable advanced searching, reporting, and compliance tracking","Increase server uptime","Hide documents from users"], answer:1},
+  {q:"Assigning a user to a specific library grants them:", opts:["Permanent administrator rights","The rights defined by library-level Access Control Policy, which could include read, write, or modify","CAD integration permissions anywhere","Network admin privileges"], answer:1},
+  {q:"In an installation session for Windchill components, which step is needed for ensuring system reliability?", opts:["Skipping license configuration","Verifying all dependencies (Java, database, port settings) before proceeding","Storing files in random folders","Using default passwords for all accounts"], answer:1},
+  {q:"The use of practical sessions on 'Finding Documents' in Windchill is to enhance:", opts:["Document searching skills using advanced filters, contexts, and metadata criteria","User password memorization","Color rendering","CAD backup only"], answer:0}
+];
+/* ---------- End questions ---------- */
+
+let currentIndex = 0;
+let answered = Array(questions.length).fill(false);
+let score = 0;
+let started = false;
+
+const leftNav = document.getElementById('leftNav');
+const qNumber = document.getElementById('qNumber');
+const qText = document.getElementById('qText');
+const optionsDiv = document.getElementById('options');
+const statusText = document.getElementById('statusText');
+const liveScore = document.getElementById('liveScore');
+const saveBtn = document.getElementById('saveBtn');
+const startBtn = document.getElementById('startBtn');
+
+function buildLeftNav(){
+  leftNav.innerHTML = '';
+  for(let i=0;i<questions.length;i++){
+    const btn = document.createElement('div');
+    btn.className = 'qbtn' + (answered[i] ? ' answered' : '') + (i===currentIndex ? ' current' : '');
+    btn.textContent = (i+1);
+    btn.dataset.idx = i;
+    // Click rules: clickable only if it's the currentIndex
+    btn.addEventListener('click', ()=> {
+      const idx = +btn.dataset.idx;
+      if(idx !== currentIndex) return; // enforce forward-only
+      showQuestion(idx);
+    });
+    leftNav.appendChild(btn);
+  }
+}
+
+function showQuestion(idx){
+  currentIndex = idx;
+  buildLeftNav();
+  const item = questions[idx];
+  qNumber.textContent = `Question ${idx+1} of ${questions.length}`;
+  qText.textContent = item.q;
+  optionsDiv.innerHTML = '';
+  statusText.textContent = `Unanswered`;
+  item.opts.forEach((op, oi) => {
+    const d = document.createElement('div');
+    d.className = 'opt';
+    d.textContent = String.fromCharCode(65+oi) + '. ' + op;
+    d.dataset.opt = oi;
+    d.addEventListener('click', onOptionClick);
+    optionsDiv.appendChild(d);
+  });
+  liveScore.style.display = started ? 'inline-block' : 'none';
+  liveScore.textContent = `Score: ${score} / ${questions.length}`;
+  saveBtn.style.display = 'none';
+}
+
+function onOptionClick(e){
+  if(!started) return;
+  const el = e.currentTarget;
+  if(el.classList.contains('locked')) return;
+  const chosen = +el.dataset.opt;
+  const correct = questions[currentIndex].answer;
+  // lock all options
+  Array.from(optionsDiv.children).forEach((c, i)=>{
+    c.classList.add('locked');
+    if(i === correct) c.classList.add('correct');
+    if(i === chosen && chosen !== correct) c.classList.add('wrong');
+  });
+  // mark answered
+  answered[currentIndex] = true;
+  if(chosen === correct) score++;
+  statusText.textContent = `Answered — Correct answer: ${String.fromCharCode(65+correct)}. ${questions[currentIndex].opts[correct]}`;
+  liveScore.textContent = `Score: ${score} / ${questions.length}`;
+  buildLeftNav();
+  // find next index (first unanswered)
+  const next = answered.findIndex(a=>!a);
+  if(next === -1){
+    // finished
+    statusText.textContent = `Quiz complete — Your score: ${score} / ${questions.length}`;
+    saveBtn.style.display = 'inline-block';
+    document.getElementById('qNumber').textContent = 'Quiz Complete';
+    document.getElementById('qText').textContent = `Final Score: ${score} / ${questions.length}`;
+    optionsDiv.innerHTML = `<div style="padding:12px;color:#333">You answered all questions. Click "Save to Google Sheets" to record your result.</div>`;
+  } else {
+    // auto-move to next after a short delay for smooth forward flow
+    setTimeout(()=> {
+      currentIndex = next;
+      showQuestion(currentIndex);
+    }, 700);
+  }
+}
+
+startBtn.addEventListener('click', ()=>{
+  const name = document.getElementById('stuName').value.trim();
+  const reg = document.getElementById('stuReg').value.trim();
+  const dept = document.getElementById('stuDept').value.trim();
+  if(!name||!reg||!dept){ alert('Please fill Name, Registration Number and Department to start.'); return; }
+  // lock inputs
+  document.getElementById('stuName').disabled = true;
+  document.getElementById('stuReg').disabled = true;
+  document.getElementById('stuDept').disabled = true;
+  startBtn.disabled = true;
+  started = true;
+  currentIndex = 0;
+  buildLeftNav();
+  showQuestion(0);
+});
+
+saveBtn.addEventListener('click', ()=>{
+  const name = document.getElementById('stuName').value.trim();
+  const reg = document.getElementById('stuReg').value.trim();
+  const dept = document.getElementById('stuDept').value.trim();
+  const payload = {name, registration: reg, department: dept, score: `${score}/${questions.length}`, timestamp: new Date().toISOString()};
+  if(!WEB_APP_URL || WEB_APP_URL.includes('YOUR_GOOGLE_WEB_APP_URL_HERE')){ alert('Google Web App URL not set properly.'); return; }
+  saveBtn.disabled = true;
+  saveBtn.textContent = 'Saving...';
+  fetch(WEB_APP_URL, {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  }).then(r=>r.json?.()).then(data=>{
+    saveBtn.textContent = 'Saved';
+    alert('Result saved successfully.');
+  }).catch(err=>{
+    console.error(err);
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Save to Google Sheets';
+    alert('Error saving. Check console and your Web App deploy URL/permissions.');
+  });
+});
+
+/* initial left nav build (before start) */
+buildLeftNav();
+</script>
+</body>
+</html>
